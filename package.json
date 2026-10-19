@@ -1,0 +1,27 @@
+{
+  "name": "venicebeach-press",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test",
+    "test:browser": "node scripts/browser-check.mjs",
+    "check:launch": "node scripts/check-launch.mjs",
+    "generate:social": "node scripts/generate-social.mjs",
+    "format": "prettier --write src test scripts/*.mjs public package.json README.md",
+    "format:check": "prettier --check src test scripts/*.mjs public package.json README.md"
+  },
+  "dependencies": {
+    "express": "5.1.0"
+  },
+  "devDependencies": {
+    "axe-core": "4.11.1",
+    "playwright-core": "1.61.1",
+    "prettier": "3.8.1"
+  }
+}
