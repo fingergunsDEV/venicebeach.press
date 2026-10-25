@@ -4,7 +4,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../src/app.js";
-import { PUBLIC_PAGES, pageMetadata, headTags } from "../src/seo.js";
+import {
+  PUBLIC_PAGES,
+  publicPages,
+  pageMetadata,
+  headTags,
+} from "../src/seo.js";
 const graph = (html) =>
   JSON.parse(
     html.match(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/s)[1],
@@ -27,7 +32,7 @@ test("both channels: complete per-page heads, safe schema graphs, assets, and ca
       const get = (path) => fetch(base + path, { redirect: "manual" });
       try {
         const descriptions = new Set();
-        for (const path of Object.keys(PUBLIC_PAGES)) {
+        for (const path of Object.keys(publicPages(channel))) {
           const r = await get(path);
           assert.equal(r.status, 200, path);
           const html = await r.text();
@@ -78,7 +83,7 @@ test("both channels: complete per-page heads, safe schema graphs, assets, and ca
         }
         assert.equal(
           descriptions.size,
-          Object.keys(PUBLIC_PAGES).length,
+          Object.keys(publicPages(channel)).length,
           "Each public route has its own description",
         );
         const filtered = await (
@@ -113,7 +118,7 @@ test("both channels: complete per-page heads, safe schema graphs, assets, and ca
         assert.match(robots, new RegExp("Sitemap: " + domain + "/sitemap.xml"));
         assert.match(robots, /Disallow: \/newsletter\/manage\//);
         const xml = await (await get("/sitemap.xml")).text();
-        for (const path of Object.keys(PUBLIC_PAGES))
+        for (const path of Object.keys(publicPages(channel)))
           assert.ok(xml.includes(`<loc>${domain + path}</loc>`));
         assert.doesNotMatch(xml, /\/admin|\/stories\/|\/privacy\/request/);
         const stmt = app.locals.db.prepare(

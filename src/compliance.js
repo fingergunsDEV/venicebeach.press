@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { businessContact } from "./business.js";
-export const NOTICE_VERSION = "2026-10-16.2";
+export const NOTICE_VERSION = "2026-10-24.1";
 export function mountCompliance(
   app,
   { db, page, formPage, guard, esc, channel },

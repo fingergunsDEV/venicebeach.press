@@ -83,6 +83,10 @@ export function openStore(
       add.run(...row, "published", new Date().toISOString());
   }
   for (const [name, type] of [
+    ["byline", "TEXT DEFAULT ''"],
+    ["source_url", "TEXT DEFAULT ''"],
+    ["published_at", "TEXT DEFAULT ''"],
+    ["verified_at", "TEXT DEFAULT ''"],
     ["creator_name", "TEXT DEFAULT ''"],
     ["creator_type", "TEXT DEFAULT 'Person'"],
     ["venue_address", "TEXT DEFAULT ''"],

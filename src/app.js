@@ -7,10 +7,17 @@ import {
   pageMetadata,
   headTags,
   PUBLIC_PAGES,
+  publicPages,
   publicOrigin,
   absolute,
 } from "./seo.js";
 import { mountCompliance, NOTICE_VERSION } from "./compliance.js";
+import {
+  pressHeader,
+  pressHome,
+  pressNewsletter,
+  mountPressSections,
+} from "./press.js";
 const esc = (v) =>
   String(v ?? "").replace(
     /[&<>"']/g,
@@ -20,7 +27,7 @@ const esc = (v) =>
       ],
   );
 const now = () => new Date().toISOString();
-const categories = ["Music", "Film", "Art", "Culture", "Nightlife"];
+const cultureCategories = ["Music", "Film", "Art", "Culture", "Nightlife"];
 const packages = [
   [
     "Creator Spotlight",
@@ -58,6 +65,16 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
     db = openStore(dataDir),
     sessions = new Map(),
     limits = new Map();
+  const categories =
+    channel === "press"
+      ? [
+          "Local news",
+          "Community",
+          "Classifieds",
+          "Marketplace",
+          ...cultureCategories,
+        ]
+      : cultureCategories;
   app.locals.db = db;
   const origin =
     process.env.PUBLIC_URL ||
@@ -147,7 +164,7 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
       .status(status)
       .type("html")
       .send(
-        `<!doctype html><html lang="en"><head>${headTags(meta, { channel, nonce, esc })}<script src="/assets/site.js" defer></script></head><body class="${channel}"><a class="skip" href="#main">Skip to content</a><div class="network"><a href="https://venicebeach.media">A VENICEBEACH.MEDIA PUBLICATION</a><span>INDEPENDENT CULTURE · VENICE, CA</span></div><header><a class="wordmark" href="/">venicebeach<span>.${channel}</span><sup>✳</sup></a><nav aria-label="Main"><a href="${channel === "buzz" ? "/events" : "/creators"}">${channel === "buzz" ? "The calendar" : "Creators"}</a><a href="/explore">Explore</a><a href="/sponsor">Partner with us →</a><a class="pill" href="/newsletter">Get the edit</a></nav></header><main id="main">${breadcrumb}${body}</main><section class="newsletter"><div class="eyebrow">A LITTLE LOCAL KNOWLEDGE</div><h2>The scene, in your inbox.</h2><p>Music, film, and creative people worth your time.</p><a class="button" href="/newsletter">Join the list →</a></section><footer><a class="wordmark" href="/">venicebeach.${channel}</a><p>One scene. Two perspectives. <a href="${esc(other)}">Visit VeniceBeach.${channel === "buzz" ? "press" : "buzz"} →</a></p><div class="footerlinks"><a href="/about">About</a><a href="/submit">Submit a ${channel === "buzz" ? "happening" : "project"}</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/disclosures">Advertising disclosures</a><a href="/privacy/request">Privacy requests</a><a href="/accessibility">Accessibility</a><a href="/admin">Publishing desk</a></div><small>Commercial websites owned and operated by Holistic Growth Marketing LLC · VeniceBeach.media.<br>${esc(businessContact(channel).address)} · <a href="mailto:${esc(businessContact(channel).privacyEmail)}">${esc(businessContact(channel).privacyEmail)}</a></small></footer></body></html>`,
+        `<!doctype html><html lang="en"><head>${headTags(meta, { channel, nonce, esc })}${channel === "press" ? '<link rel="stylesheet" href="/assets/press.css">' : ""}<script src="/assets/site.js" defer></script></head><body class="${channel}"><a class="skip" href="#main">Skip to content</a>${channel === "press" ? pressHeader() : `<div class="network"><a href="https://venicebeach.media">A VENICEBEACH.MEDIA PUBLICATION</a><span>INDEPENDENT CULTURE · VENICE, CA</span></div><header><a class="wordmark" href="/">venicebeach<span>.${channel}</span><sup>✳</sup></a><nav aria-label="Main"><a href="${channel === "buzz" ? "/events" : "/creators"}">${channel === "buzz" ? "The calendar" : "Creators"}</a><a href="/explore">Explore</a><a href="/sponsor">Partner with us →</a><a class="pill" href="/newsletter">Get the edit</a></nav></header>`}<main id="main">${breadcrumb}${body}</main>${channel === "press" ? pressNewsletter() : `<section class="newsletter"><div class="eyebrow">A LITTLE LOCAL KNOWLEDGE</div><h2>The scene, in your inbox.</h2><p>Music, film, and creative people worth your time.</p><a class="button" href="/newsletter">Join the list →</a></section>`}<footer><a class="wordmark" href="/">${channel === "press" ? "Venice Beach Press." : "venicebeach." + channel}</a><p>${channel === "press" ? "A coastal publication. A neighborhood perspective." : "One scene. Two perspectives."} <a href="${esc(other)}">Visit VeniceBeach.${channel === "buzz" ? "press" : "buzz"} →</a></p><div class="footerlinks"><a href="/about">About</a><a href="/submit">Submit a ${channel === "buzz" ? "happening" : "project"}</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/disclosures">Advertising disclosures</a><a href="/privacy/request">Privacy requests</a><a href="/accessibility">Accessibility</a><a href="/admin">Publishing desk</a></div><small>Commercial websites owned and operated by Holistic Growth Marketing LLC · VeniceBeach.media.<br>${esc(businessContact(channel).address)} · <a href="mailto:${esc(businessContact(channel).privacyEmail)}">${esc(businessContact(channel).privacyEmail)}</a></small></footer></body></html>`,
       );
   }
   const field = (label, name, type = "text", required = true) =>
@@ -166,12 +183,23 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
       {
         noindex: res.locals.request?.method !== "GET",
         description:
-          PUBLIC_PAGES[res.locals.request?.path]?.description || intro,
+          publicPages(channel)[res.locals.request?.path]?.description || intro,
       },
     );
   }
   app.get("/", (req, res) => {
     const items = live();
+    if (channel === "press")
+      return page(
+        res,
+        "Venice Beach, in focus",
+        pressHome({ items, card, esc }),
+        {
+          description:
+            "Local news, community announcements, classifieds, and the neighborhood marketplace for Venice Beach, Los Angeles.",
+          items,
+        },
+      );
     page(
       res,
       "The " +
@@ -248,7 +276,7 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
     page(
       res,
       c.title,
-      `<article class="story"><div class="meta">${esc(c.kind)} ${c.demo ? "· Sample content" : ""} ${c.sponsor ? "· Advertisement · Paid content by " + esc(c.sponsor) : "· Independent editorial"}</div>${c.sponsor ? `<aside class="ad-disclosure" aria-label="Advertising disclosure">Advertisement · Paid content for ${esc(c.sponsor)}. This is a commercial placement, not an independent review.</aside>` : ""}<h1>${esc(c.title)}</h1><p class="standfirst">${esc(c.summary)}</p>${c.image_path ? `<figure><img class="editorial-image" src="${esc(c.image_path)}" alt="${esc(c.image_alt)}" width="1200" height="800"><figcaption>${esc(c.image_credit)}</figcaption></figure>` : '<div class="story-art art-1">✳</div>'}${c.event_date ? `<p>${esc(new Date(c.event_date).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))} PT · ${esc(c.venue)}</p>` : ""}<div class="prose">${c.body
+      `<article class="story"><div class="meta">${esc(c.kind)} ${c.demo ? "· Sample content" : ""} ${c.sponsor ? "· Advertisement · Paid content by " + esc(c.sponsor) : "· Independent editorial"}</div>${c.sponsor ? `<aside class="ad-disclosure" aria-label="Advertising disclosure">Advertisement · Paid content for ${esc(c.sponsor)}. This is a commercial placement, not an independent review.</aside>` : ""}<h1>${esc(c.title)}</h1><p class="standfirst">${esc(c.summary)}</p>${channel === "press" && c.byline ? `<div class="editorial-facts"><p>By ${esc(c.byline)}</p>${c.published_at ? `<p>Published <time datetime="${esc(c.published_at)}">${esc(new Date(c.published_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))} PT</time></p>` : ""}${c.verified_at ? `<p>Last verified <time datetime="${esc(c.verified_at)}">${esc(new Date(c.verified_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))} PT</time></p>` : ""}${c.source_url ? `<p><a class="source-link" href="${esc(c.source_url)}" rel="noopener">View the reporting source</a></p>` : ""}</div>` : ""}${c.image_path ? `<figure><img class="editorial-image" src="${esc(c.image_path)}" alt="${esc(c.image_alt)}" width="1200" height="800"><figcaption>${esc(c.image_credit)}</figcaption></figure>` : '<div class="story-art art-1">✳</div>'}${c.event_date ? `<p>${esc(new Date(c.event_date).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))} PT · ${esc(c.venue)}</p>` : ""}<div class="prose">${c.body
         .split("\n")
         .filter(Boolean)
         .map((s) => `<p>${esc(s)}</p>`)
@@ -399,9 +427,13 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
   app.get("/newsletter", (req, res) =>
     formPage(
       res,
-      "A little local knowledge.",
-      "A permission-based edit of music, film, and creative culture. You can unsubscribe at any time. Delivery starts only after the publisher connects the email service.",
-      `<form method="post" action="/newsletter">${field("Email address", "email", "email")}${adult}<label class="check"><input type="checkbox" name="consent" value="yes" required>Yes, email me VeniceBeach.media music, film, and culture updates and clearly labeled sponsor promotions. I can unsubscribe at any time. See the <a href="/privacy">privacy notice</a>.</label><div class="trap" aria-hidden="true"><label>Leave blank<input name="website_confirm" tabindex="-1"></label></div><button>Request a subscription →</button></form>`,
+      channel === "press"
+        ? "The neighborhood, in your inbox."
+        : "A little local knowledge.",
+      channel === "press"
+        ? "Request local stories, community notices, and labeled sponsor messages. You can unsubscribe at any time. No email is sent until the publisher configures delivery."
+        : "A permission-based edit of music, film, and creative culture. You can unsubscribe at any time. Delivery starts only after the publisher connects the email service.",
+      `<form method="post" action="/newsletter">${field("Email address", "email", "email")}${adult}<label class="check"><input type="checkbox" name="consent" value="yes" required>Yes, email me ${channel === "press" ? "Venice Beach Press local news, community notices, and neighborhood updates" : "VeniceBeach.media music, film, and culture updates"} and clearly labeled sponsor promotions. I can unsubscribe at any time. See the <a href="/privacy">privacy notice</a>.</label><div class="trap" aria-hidden="true"><label>Leave blank<input name="website_confirm" tabindex="-1"></label></div><button>Request a subscription →</button></form>`,
     ),
   );
   app.post("/newsletter", guard, async (req, res, next) => {
@@ -479,8 +511,12 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
   app.get("/about", (req, res) =>
     page(
       res,
-      "Independent by nature",
-      '<section class="pagehead"><div class="eyebrow">ONE NETWORK / TWO PERSPECTIVES</div><h1>Culture, with a point of view.</h1><p>Buzz helps you discover the scene. Press introduces the people making it. Together, we are VeniceBeach.media: an independent culture and entertainment network published by Holistic Growth Marketing LLC.</p><p>We cover music, film, art, and creative projects. Paid promotion is labeled and kept separate from independent editorial decisions.</p></section>',
+      channel === "press"
+        ? "A publication for the neighborhood"
+        : "Independent by nature",
+      channel === "press"
+        ? '<section class="pagehead"><div class="press-kicker">VENICE BEACH / LOS ANGELES / CALIFORNIA</div><h1>A neighborhood deserves a point of view.</h1><p>Venice Beach Press is a commercial neighborhood publication for local news, community announcements, classifieds, and the marketplace. We look to the people who live, work, create, and raise families here to help tell its story.</p><p>News requires attributable sources, a byline, publication dates, and verification. Sample stories are clearly labeled. Advertising is labeled and kept separate from independent editorial decisions.</p><p>Published by Holistic Growth Marketing LLC as part of VeniceBeach.media. Our sister publication, VeniceBeach.buzz, focuses on music, film, and entertainment discovery.</p></section>'
+        : '<section class="pagehead"><div class="eyebrow">ONE NETWORK / TWO PERSPECTIVES</div><h1>Culture, with a point of view.</h1><p>Buzz helps you discover the scene. Press introduces the people making it. Together, we are VeniceBeach.media: an independent culture and entertainment network published by Holistic Growth Marketing LLC.</p><p>We cover music, film, art, and creative projects. Paid promotion is labeled and kept separate from independent editorial decisions.</p></section>',
     ),
   );
   function auth(req, res, next) {
@@ -736,7 +772,7 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
     page(
       res,
       "Preview: " + c.title,
-      `<article class="story"><div class="notice">PRIVATE PREVIEW · ${esc(c.status)} · ${esc(c.channel)} · ${esc(c.publish_at || "not scheduled")}</div>${c.sponsor ? `<aside class="ad-disclosure" aria-label="Advertising disclosure">Advertisement · Paid content for ${esc(c.sponsor)}. This is a commercial placement, not an independent review.</aside>` : ""}<h1>${esc(c.title)}</h1><p class="standfirst">${esc(c.summary)}</p>${c.sponsor ? `<p>Sponsored by ${esc(c.sponsor)}</p>` : ""}<div class="prose">${c.body
+      `<article class="story"><div class="notice">PRIVATE PREVIEW · ${esc(c.status)} · ${esc(c.channel)} · ${esc(c.publish_at || "not scheduled")}</div>${c.sponsor ? `<aside class="ad-disclosure" aria-label="Advertising disclosure">Advertisement · Paid content for ${esc(c.sponsor)}. This is a commercial placement, not an independent review.</aside>` : ""}<h1>${esc(c.title)}</h1><p class="standfirst">${esc(c.summary)}</p>${channel === "press" && c.byline ? `<div class="editorial-facts"><p>By ${esc(c.byline)}</p>${c.published_at ? `<p>Published <time datetime="${esc(c.published_at)}">${esc(new Date(c.published_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))} PT</time></p>` : ""}${c.verified_at ? `<p>Last verified <time datetime="${esc(c.verified_at)}">${esc(new Date(c.verified_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))} PT</time></p>` : ""}${c.source_url ? `<p><a class="source-link" href="${esc(c.source_url)}" rel="noopener">View the reporting source</a></p>` : ""}</div>` : ""}${c.sponsor ? `<p>Sponsored by ${esc(c.sponsor)}</p>` : ""}<div class="prose">${c.body
         .split("\n")
         .map((p) => `<p>${esc(p)}</p>`)
         .join(
@@ -759,7 +795,7 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
       res,
       c.id ? "Edit content" : "Create content",
       "Draft → review → published, or archive. Future publish times remain hidden until due. Verify permissions and facts before publishing.",
-      `<form action="/admin/content/${c.id || "new"}" method="post">${csrfInput(req)}${opts("Channel", "channel", ["buzz", "press"])}${opts("Template", "kind", ["story", "event", "profile", "project"])}${input("Title", "title")}${input("Unique slug", "slug")}${opts("Category", "category", categories)}${input("Summary", "summary")}${input("Tags (comma-separated lowercase slugs)", "tags")}<label>Body (plain text, paragraphs separated by new lines)<textarea name="body" required maxlength="30000">${esc(c.body || "")}</textarea></label>${input("Verified creator / organization name (optional)", "creator_name")}${opts("Creator entity type", "creator_type", ["Person", "Organization"])}${input("Venue or location", "venue")}${input("Verified venue street address (optional)", "venue_address")}${input("Event time (ISO 8601 including offset, e.g. 2026-11-01T19:00:00-08:00)", "event_date")}${input("Official HTTPS source / project URL", "destination", "url")}${input("Sponsor name (adds paid-content disclosure)", "sponsor")}${input("Campaign ID (letters, numbers, hyphens; no personal data)", "campaign_id")}${input("Related creator/project record ID (optional)", "related_id", "number")}${input("Local image path, e.g. /assets/editorial/photo.webp", "image_path")}${input("Image alt text", "image_alt")}${input("Image credit", "image_credit")}${input("Image rights / permission note", "rights_note")}${opts("Workflow status", "status", req.session.role === "contributor" ? ["draft", "review"] : ["draft", "review", "published", "archived"])}${input("Schedule publication (ISO 8601 with offset, optional)", "publish_at")}<label class="check"><input type="checkbox" name="demo" value="1" ${c.demo ? "checked" : ""}>Sample content (excluded from calendar and search indexing)</label><label class="check"><input name="verified" type="checkbox" value="yes" required>I verified accuracy, source information, and permission to publish.</label><button>Save content</button></form>`,
+      `<form action="/admin/content/${c.id || "new"}" method="post">${csrfInput(req)}${opts("Channel", "channel", ["buzz", "press"])}${opts("Template", "kind", ["story", "event", "profile", "project"])}${input("Title", "title")}${input("Unique slug", "slug")}${opts("Category", "category", ["Local news", "Community", "Classifieds", "Marketplace", ...cultureCategories])}${input("Summary", "summary")}${input("Verified byline (required for local news)", "byline")}${input("Reporting source URL (required for local news)", "source_url", "url")}${input("Publication time (ISO 8601 with timezone)", "published_at")}${input("Last verified time (ISO 8601 with timezone)", "verified_at")}${input("Tags (comma-separated lowercase slugs)", "tags")}<label>Body (plain text, paragraphs separated by new lines)<textarea name="body" required maxlength="30000">${esc(c.body || "")}</textarea></label>${input("Verified creator / organization name (optional)", "creator_name")}${opts("Creator entity type", "creator_type", ["Person", "Organization"])}${input("Venue or location", "venue")}${input("Verified venue street address (optional)", "venue_address")}${input("Event time (ISO 8601 including offset, e.g. 2026-11-01T19:00:00-08:00)", "event_date")}${input("Official HTTPS source / project URL", "destination", "url")}${input("Sponsor name (adds paid-content disclosure)", "sponsor")}${input("Campaign ID (letters, numbers, hyphens; no personal data)", "campaign_id")}${input("Related creator/project record ID (optional)", "related_id", "number")}${input("Local image path, e.g. /assets/editorial/photo.webp", "image_path")}${input("Image alt text", "image_alt")}${input("Image credit", "image_credit")}${input("Image rights / permission note", "rights_note")}${opts("Workflow status", "status", req.session.role === "contributor" ? ["draft", "review"] : ["draft", "review", "published", "archived"])}${input("Schedule publication (ISO 8601 with offset, optional)", "publish_at")}<label class="check"><input type="checkbox" name="demo" value="1" ${c.demo ? "checked" : ""}>Sample content (excluded from calendar and search indexing)</label><label class="check"><input name="verified" type="checkbox" value="yes" required>I verified accuracy, source information, and permission to publish.</label><button>Save content</button></form>`,
     );
   });
   app.post("/admin/content/:id", auth, csrf, (req, res) => {
@@ -777,7 +813,13 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
     if (
       !["buzz", "press"].includes(b.channel) ||
       !["story", "event", "profile", "project"].includes(b.kind) ||
-      !categories.includes(b.category) ||
+      ![
+        "Local news",
+        "Community",
+        "Classifieds",
+        "Marketplace",
+        ...cultureCategories,
+      ].includes(b.category) ||
       !["draft", "review", "published", "archived"].includes(b.status) ||
       !b.title?.trim() ||
       !b.summary?.trim() ||
@@ -794,6 +836,29 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
         .status(400)
         .send(
           "Check required fields, slug, workflow, and ISO timestamps with timezone. Events require source, date, and venue.",
+        );
+    if (
+      (b.source_url && !safeURL(b.source_url)) ||
+      ["published_at", "verified_at"].some(
+        (k) => b[k] && (!iso(b[k]) || Date.parse(b[k]) > Date.now()),
+      )
+    )
+      return res
+        .status(400)
+        .send(
+          "Use a valid HTTPS reporting source and non-future ISO timestamps.",
+        );
+    if (
+      b.channel === "press" &&
+      b.category === "Local news" &&
+      b.status === "published" &&
+      b.demo !== "1" &&
+      (!b.byline?.trim() || !b.source_url || !b.published_at || !b.verified_at)
+    )
+      return res
+        .status(400)
+        .send(
+          "Local news requires a verified byline, HTTPS source, publication time, and verification time.",
         );
     const values = [
       b.channel,
@@ -883,6 +948,15 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
         id,
       );
       db.prepare(
+        "UPDATE content SET byline=?,source_url=?,published_at=?,verified_at=? WHERE id=?",
+      ).run(
+        String(b.byline || "").slice(0, 250),
+        b.source_url || "",
+        b.published_at ? new Date(b.published_at).toISOString() : "",
+        b.verified_at ? new Date(b.verified_at).toISOString() : "",
+        id,
+      );
+      db.prepare(
         "INSERT INTO revisions(content_id,snapshot,actor,created_at) VALUES(?,?,?,?)",
       ).run(
         id,
@@ -902,6 +976,7 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
       throw e;
     }
   });
+  if (channel === "press") mountPressSections(app, { page, live, card });
   mountCompliance(app, { db, page, formPage, guard, esc, channel });
   app.get("/site.webmanifest", (req, res) =>
     res.type("application/manifest+json").send(
@@ -909,12 +984,12 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
         id: "/",
         name: `VeniceBeach.${channel}`,
         short_name: `VB.${channel}`,
-        description: PUBLIC_PAGES["/"].description,
+        description: publicPages(channel)["/"].description,
         start_url: "/",
         scope: "/",
         display: "browser",
         background_color: "#f5f2e9",
-        theme_color: channel === "buzz" ? "#dcff5d" : "#efb9fd",
+        theme_color: channel === "buzz" ? "#dcff5d" : "#d3e1d8",
         icons: [
           {
             src: `/assets/favicon-${channel}.svg`,
@@ -937,7 +1012,7 @@ export function createApp({ channel = "buzz", dataDir } = {}) {
     const base = publicOrigin(channel),
       records = live().filter((c) => !c.demo);
     const urls = [
-      ...Object.keys(PUBLIC_PAGES).map((path) => ({ path })),
+      ...Object.keys(publicPages(channel)).map((path) => ({ path })),
       ...records.map((c) => ({
         path: "/stories/" + c.slug,
         lastmod: c.updated_at,

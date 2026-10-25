@@ -1,4 +1,5 @@
 import { businessContact } from "./business.js";
+import { PRESS_SECTIONS } from "./press.js";
 export const PUBLIC_PAGES = {
   "/": {
     type: "WebPage",
@@ -73,6 +74,33 @@ export const PUBLIC_PAGES = {
       "Accessibility goals and support contacts for VeniceBeach.buzz and VeniceBeach.press.",
   },
 };
+export function publicPages(channel) {
+  if (channel !== "press") return PUBLIC_PAGES;
+  return {
+    ...PUBLIC_PAGES,
+    "/": {
+      type: "WebPage",
+      description:
+        "Local news, community announcements, classifieds, and the neighborhood marketplace for Venice Beach, Los Angeles.",
+    },
+    "/about": {
+      type: "AboutPage",
+      description:
+        "Meet Venice Beach Press, a commercial neighborhood publication operated by Holistic Growth Marketing LLC.",
+    },
+    "/newsletter": {
+      type: "WebPage",
+      description:
+        "Request the Venice Beach Press neighborhood email edit, with explicit consent and simple withdrawal controls.",
+    },
+    ...Object.fromEntries(
+      Object.entries(PRESS_SECTIONS).map(([path, s]) => [
+        path,
+        { type: "CollectionPage", description: s.description },
+      ]),
+    ),
+  };
+}
 export function publicOrigin(channel) {
   const u = new URL(process.env.PUBLIC_URL || `https://venicebeach.${channel}`);
   if (!["https:", "http:"].includes(u.protocol) || u.username || u.password)
@@ -132,10 +160,10 @@ export function pageMetadata({
       }
     }
   const filterLabel = filters.length ? " — " + filters.join(" / ") : "";
-  const fullTitle = `${PUBLIC_PAGES[cleanPath]?.title || title}${filterLabel} · VeniceBeach.${channel}`;
+  const fullTitle = `${publicPages(channel)[cleanPath]?.title || title}${filterLabel} · VeniceBeach.${channel}`;
   const summary =
     description ||
-    PUBLIC_PAGES[cleanPath]?.description ||
+    publicPages(channel)[cleanPath]?.description ||
     "Venice Beach music, film, art, events, and creative projects.";
   const exclude =
     noindex ||
@@ -214,7 +242,7 @@ export function pageMetadata({
       publisher: { "@id": publisher },
     },
     {
-      "@type": PUBLIC_PAGES[cleanPath]?.type || "WebPage",
+      "@type": publicPages(channel)[cleanPath]?.type || "WebPage",
       "@id": webpage,
       url: canonical.href,
       name: fullTitle,
@@ -236,6 +264,27 @@ export function pageMetadata({
     },
   ];
   const page = graph[3];
+  if (channel === "press") {
+    graph.push({
+      "@type": "Place",
+      "@id": origin + "/#venice-beach",
+      name: "Venice Beach",
+      containedInPlace: {
+        "@type": "Place",
+        name: "Venice",
+        containedInPlace: {
+          "@type": "City",
+          name: "Los Angeles",
+          containedInPlace: {
+            "@type": "State",
+            name: "California",
+            containedInPlace: { "@type": "Country", name: "United States" },
+          },
+        },
+      },
+    });
+    page.about = { "@id": origin + "/#venice-beach" };
+  }
   if (content && !content.demo) {
     const id = canonical.href + "#content";
     page.mainEntity = { "@id": id };
@@ -284,6 +333,21 @@ export function pageMetadata({
         page.hasPart = { "@id": id };
       }
     }
+    if (
+      channel === "press" &&
+      content.kind === "story" &&
+      content.category === "Local news" &&
+      !content.sponsor &&
+      content.byline &&
+      content.source_url &&
+      content.published_at &&
+      content.verified_at
+    ) {
+      entity["@type"] = "NewsArticle";
+      entity.author = { "@type": "Person", name: content.byline };
+      entity.citation = content.source_url;
+      entity.datePublished = content.published_at;
+    }
     if (content.image_path)
       entity.image = {
         "@type": "ImageObject",
@@ -330,5 +394,5 @@ export function headTags(meta, { channel, nonce, esc }) {
   const font = cdn
     ? '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=DM+Serif+Display:ital@0;1&amp;display=optional">'
     : '<link rel="preload" href="/assets/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/assets/fonts.css">';
-  return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(meta.title)}</title><meta name="description" content="${esc(meta.description)}"><meta name="robots" content="${meta.noindex ? "noindex,nofollow" : "index,follow,max-image-preview:large"}"><meta name="theme-color" content="${channel === "buzz" ? "#dcff5d" : "#efb9fd"}"><meta name="color-scheme" content="light"><meta name="author" content="Holistic Growth Marketing LLC"><link rel="canonical" href="${esc(meta.canonical)}"><meta property="og:locale" content="en_US"><meta property="og:site_name" content="VeniceBeach.${channel}"><meta property="og:type" content="${meta.ogType}"><meta property="og:title" content="${esc(meta.title)}"><meta property="og:description" content="${esc(meta.description)}"><meta property="og:url" content="${esc(meta.canonical)}"><meta property="og:image" content="${esc(meta.image)}"><meta property="og:image:alt" content="${esc(meta.description)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(meta.title)}"><meta name="twitter:description" content="${esc(meta.description)}"><meta name="twitter:image" content="${esc(meta.image)}"><link rel="icon" href="/assets/favicon-${channel}.svg" type="image/svg+xml"><link rel="manifest" href="/site.webmanifest">${font}<link rel="stylesheet" href="/assets/style.css">${meta.graph ? `<script type="application/ld+json" nonce="${nonce}">${jsonLD(meta.graph)}</script>` : ""}`;
+  return `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(meta.title)}</title><meta name="description" content="${esc(meta.description)}"><meta name="robots" content="${meta.noindex ? "noindex,nofollow" : "index,follow,max-image-preview:large"}"><meta name="theme-color" content="${channel === "buzz" ? "#dcff5d" : "#d3e1d8"}"><meta name="color-scheme" content="light"><meta name="author" content="Holistic Growth Marketing LLC"><link rel="canonical" href="${esc(meta.canonical)}"><meta property="og:locale" content="en_US"><meta property="og:site_name" content="VeniceBeach.${channel}"><meta property="og:type" content="${meta.ogType}"><meta property="og:title" content="${esc(meta.title)}"><meta property="og:description" content="${esc(meta.description)}"><meta property="og:url" content="${esc(meta.canonical)}"><meta property="og:image" content="${esc(meta.image)}"><meta property="og:image:alt" content="${esc(meta.description)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(meta.title)}"><meta name="twitter:description" content="${esc(meta.description)}"><meta name="twitter:image" content="${esc(meta.image)}"><link rel="icon" href="/assets/favicon-${channel}.svg" type="image/svg+xml"><link rel="manifest" href="/site.webmanifest">${font}<link rel="stylesheet" href="/assets/style.css">${meta.graph ? `<script type="application/ld+json" nonce="${nonce}">${jsonLD(meta.graph)}</script>` : ""}`;
 }

@@ -49,7 +49,10 @@ test("shared network: public discovery, moderation, publishing, reporting, priva
           r.headers.get("content-security-policy"),
           /frame-ancestors 'none'/,
         );
-        assert.match(await (await fetch(second)).text(), /Meet the minds/);
+        assert.match(
+          await (await fetch(second)).text(),
+          /Venice Beach,<br><em>in focus/,
+        );
         const calendar = await (await get("/events")).text();
         assert.match(calendar, /No matching published listings/);
         assert.doesNotMatch(calendar, /After the last set/);

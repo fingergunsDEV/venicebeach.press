@@ -1,6 +1,6 @@
 # VeniceBeach.press
 
-The creators and projects shaping Venice Beach culture. Built from the October 2026 PRD/DRM, under the VeniceBeach.media umbrella. Holistic Growth Marketing LLC appears only as legal publisher.
+Local news, community announcements, classifieds, and the Venice Beach marketplace. Built from the October 2026 PRD/DRM, under the VeniceBeach.media umbrella. Holistic Growth Marketing LLC appears only as legal publisher.
 
 ## Run locally
 
@@ -82,3 +82,5 @@ Both sites are commercial properties operated by Holistic Growth Marketing LLC, 
 Public business defaults supplied by the owner are in Buzz `src/business.js`: 215 Market Street, Venice, CA 90291; each channel uses its matching `info@` mailbox for privacy/accessibility, with jason@holisticgrowthmarketing.com as publisher contact and info@venicebeach.media for network inquiries. `PRIVACY_EMAIL` and `BUSINESS_ADDRESS` may override defaults per deployment. Mailbox delivery has not been tested.
 
 For standalone setup in this repository, run `npm ci --ignore-scripts` and `npm start`. All runtime files are included locally. Page metadata and sitemap behavior are documented in `docs/SEO.md`.
+
+The current coastal editorial direction supersedes the original creator-only Press positioning. See `docs/PRESS-DESIGN.md` for the design, imagery limitations, verification workflow, screenshots, and checks completed.

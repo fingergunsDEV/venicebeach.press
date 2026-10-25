@@ -37,6 +37,9 @@ try {
         "/accessibility",
         "/terms",
         "/admin/login",
+        ...(channel === "press"
+          ? ["/news", "/community", "/classifieds", "/marketplace"]
+          : []),
         "/stories/" +
           (channel === "buzz"
             ? "after-the-last-set"
@@ -84,6 +87,9 @@ try {
           "/accessibility",
           "/terms",
           "/admin/login",
+          ...(channel === "press"
+            ? ["/news", "/community", "/classifieds", "/marketplace"]
+            : []),
         ]) {
           await scan.goto(`http://127.0.0.1:${port}${route}`);
           await scan.addScriptTag({
